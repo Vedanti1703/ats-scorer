@@ -12,38 +12,45 @@ from frontend.components.recommendations import display_recommendations
 
 
 def display_results_dashboard(analysis: Dict[str, Any]) -> None:
-    """
-    Render the full results page from one backend response dict.
-
-    `analysis` is the JSON body returned by POST /api/v1/analyze-resume
-    (i.e. an AnalysisResponse). No transformation is done here — every
-    section reads the fields it needs directly.
-    """
-    display_overall_score(analysis)
     st.markdown("---")
 
-    display_score_breakdown(analysis)
-    st.markdown("---")
+    tab_overview, tab_keywords, tab_feedback, tab_actions = st.tabs([
+        "Overview",
+        "Keywords & JD Match",
+        "Detailed Feedback",
+        "Action Items",
+    ])
 
-    display_strengths(analysis.get("strengths") or [])
-    st.markdown("---")
+    with tab_overview:
+        display_overall_score(analysis)
+        st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+        display_score_breakdown(analysis)
+        st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+        col_s, col_i = st.columns(2)
+        with col_s:
+            display_strengths(analysis.get("strengths") or [])
+        with col_i:
+            display_critical_issues(analysis)
 
-    display_critical_issues(analysis)
-    st.markdown("---")
+    with tab_keywords:
+        jd_comparison = analysis.get("jd_comparison") or analysis.get("jd_match_analysis")
+        if jd_comparison:
+            display_jd_comparison(jd_comparison)
+        else:
+            st.info(
+                "No Job Description was provided for this run. "
+                "Select 'Paste JD Text' or 'Upload .txt File' in the Analyzer to see targeted keyword match and skills gap."
+            )
+            comp_scores = analysis.get("component_scores") or {}
+            kw_score = comp_scores.get("keywords", 0)
+            st.metric("General Keyword & Skill Score", f"{kw_score:.0f} / 25 pts")
 
-    display_skill_validation(analysis)
-    st.markdown("---")
+    with tab_feedback:
+        display_detailed_feedback(analysis)
+        st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
+        display_skill_validation(analysis)
 
-    # JD comparison only shows up if the user actually submitted a JD.
-    jd_comparison = analysis.get("jd_comparison") or analysis.get("jd_match_analysis")
-    if jd_comparison:
-        display_jd_comparison(jd_comparison)
-        st.markdown("---")
-
-    display_detailed_feedback(analysis)
-    st.markdown("---")
-
-    display_action_items(analysis)
-    st.markdown("---")
-
-    display_recommendations(analysis)
+    with tab_actions:
+        display_action_items(analysis)
+        st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
+        display_recommendations(analysis)

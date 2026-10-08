@@ -8,7 +8,7 @@ from groq import Groq
 logger=logging.getLogger('ats_resume_scorer')
 
 
-GROQ_MODEL='llama-3.3-70b-versatile'
+GROQ_MODEL='openai/gpt-oss-120b'
 
 _client=None
 
@@ -16,7 +16,6 @@ def _get_client()->Groq:
     global _client
     if _client is None:
         api_key=os.getenv('GROQ_API_KEY')
-
         if not api_key:
             raise ValueError("GROQ_API_KEY environment variable not set")
         _client=Groq(api_key=api_key)
@@ -109,16 +108,16 @@ def _try_parse_json(text: str) -> dict | None:
         return None
     
 def parse_resume(raw_text: str)->Dict:
-
     client=_get_client()
     prompt=RESUME_USER_PROMPT.format(raw_text=raw_text)
     raw_response=_call_groq(client, RESUME_SYSTEM_PROMPT, prompt)
     result=_try_parse_json(raw_response)
 
-    if result is None:
+    # Success on first attempt — return immediately
+    if result is not None:
         return _validate_resume_result(result)
-    
 
+    # First attempt returned invalid JSON — retry once
     logger.warning("Groq resume parse: first attempt returned invalid JSON, retrying...")
     strict_prompt = (
         "Your previous response was not valid JSON. "
@@ -166,9 +165,12 @@ def parse_job_description(raw_text: str) -> Dict:
 
     raw_response = _call_groq(client, JD_SYSTEM_PROMPT, prompt)
     result = _try_parse_json(raw_response)
+
+    # Success on first attempt — return immediately
     if result is not None:
         return _validate_jd_result(result)
 
+    # First attempt returned invalid JSON — retry once
     logger.warning("Groq JD parse: first attempt returned invalid JSON, retrying...")
     strict_prompt = (
         "Your previous response was not valid JSON. "

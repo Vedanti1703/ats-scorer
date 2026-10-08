@@ -56,13 +56,20 @@ async def analyze_resume(
 
     #Full Analysis Pipeline 
     try:
+        import asyncio
+        from functools import partial
         from backend.services.resume_analyzer import analyze_full_resume
-        
-        result = analyze_full_resume(
-            resume_text=resume_text,
-            nlp=nlp,
-            embedder=embedder,
-            job_description=job_description
+
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None,
+            partial(
+                analyze_full_resume,
+                resume_text=resume_text,
+                nlp=nlp,
+                embedder=embedder,
+                job_description=job_description,
+            ),
         )
     except Exception as exc:
         logger.error(f'Full analysis pipeline failed: {exc}')
